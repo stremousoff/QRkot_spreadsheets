@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from aiogoogle import Aiogoogle
 from app.core.config import settings
@@ -7,30 +7,43 @@ from app.core.config import settings
 FORMAT = "%Y/%m/%d %H:%M:%S"
 
 
-async def spreadsheets_create(
-    wrapper_services: Aiogoogle, rows: int = 1, columns: int = 1
-) -> tuple[str, str]:
-    now_date_time = datetime.now().strftime(FORMAT)
-    service = await wrapper_services.discover("sheets", "v4")
-    spreadsheet_body = {
-        "properties": {
-            "title": f"Все закрытые сборы на {now_date_time} время",
-            "locale": "ru_RU",
-        },
-        "sheets": [
-            {
-                "properties": {
-                    "sheetType": "GRID",
-                    "sheetId": 0,
-                    "title": "Лист1",
-                    "gridProperties": {
-                        "rowCount": rows,
-                        "columnCount": columns,
-                    },
-                }
-            }
+def get_spreadsheet_header(_datetime: str) -> list:
+    return [
+        ["Отчёт от", _datetime],
+        ["Топ проектов по скорости закрытия"],
+        ["Название проекта", "Время сбора", "Описание"],
+    ]
+
+
+def get_spreadsheet_body(_datetime: str, rows: int, columns: int) -> dict:
+    return dict(
+        properties=dict(
+            title=f"Все закрытые сборы на {_datetime} время",
+            locale="ru_RU",
+        ),
+        sheets=[
+            dict(
+                properties=dict(
+                    sheetType="GRID",
+                    sheetId=0,
+                    title="Лист1",
+                    gridProperties=dict(rowCount=rows, columnCount=columns),
+                )
+            )
         ],
-    }
+    )
+
+
+async def spreadsheets_create(
+    wrapper_services: Aiogoogle,
+    projects: list,
+) -> tuple[str, str]:
+    service = await wrapper_services.discover("sheets", "v4")
+    spreadsheet_body = get_spreadsheet_body(
+        datetime.now().strftime(FORMAT),
+        rows=len(projects) + len(get_spreadsheet_header("")),
+        columns=max(map(len, get_spreadsheet_header(""))),
+    )
     response = await wrapper_services.as_service_account(
         service.spreadsheets.create(json=spreadsheet_body)
     )
@@ -54,29 +67,41 @@ async def set_user_permissions(
 
 
 async def spreadsheets_update_value(
-    spreadsheet_id: str, reservations: list, wrapper_services: Aiogoogle
+    spreadsheet_id: str, wrapper_service: Aiogoogle, projects: list
 ) -> None:
-    now_date_time = datetime.now().strftime(FORMAT)
-    service = await wrapper_services.discover("sheets", "v4")
+    service = await wrapper_service.discover("sheets", "v4")
+    print(projects)
     table_values = [
-        ["Отчёт от", now_date_time],
-        ["Топ проектов по скорости закрытия"],
-        ["Название проекта", "Время сбора", "Описание"],
+        *get_spreadsheet_header(datetime.now().strftime(FORMAT)),
+        *[
+            list(map(str, [title, duration_period, description]))
+            for title, duration_period, description in projects
+        ],
     ]
-    for res in reservations:
-        new_row = [
-            str(res["name"]),
-            str(res["duration_period"]),
-            str(res["description"]),
-        ]
-        table_values.append(new_row)
     update_body = {"majorDimension": "ROWS", "values": table_values}
-    await wrapper_services.as_service_account(
+    num_rows = len(table_values)
+    num_columns = max(map(len, table_values))
+    spreadsheet_body = get_spreadsheet_body(
+        datetime.now().strftime(FORMAT),
+        rows=num_rows,
+        columns=num_columns,
+    )
+    num_rows_spreadsheet = spreadsheet_body["sheets"][0]["properties"][
+        "gridProperties"
+    ]["rowCount"]
+    num_columns_spreadsheet = spreadsheet_body["sheets"][0]["properties"][
+        "gridProperties"
+    ]["columnCount"]
+    if (
+        num_rows > num_rows_spreadsheet or
+            num_columns > num_columns_spreadsheet
+    ):
+        raise ValueError("Таблица не влезает в заготовку")
+
+    await wrapper_service.as_service_account(
         service.spreadsheets.values.update(
             spreadsheetId=spreadsheet_id,
-            range=f"R1C1:"
-            f"R{len(table_values)}"
-            f"C{max(map(len, table_values))}",
+            range=f"R1C1:" f"R{num_rows}" f"C{num_columns}",
             valueInputOption="USER_ENTERED",
             json=update_body,
         )

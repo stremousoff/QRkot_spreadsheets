@@ -1,3 +1,5 @@
+import asyncio
+
 from aiogoogle import Aiogoogle
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,7 +17,7 @@ router = APIRouter()
 
 
 @router.post("/")
-async def root(
+async def make_report(
     session: AsyncSession = Depends(get_async_session),
     wrapper_service: Aiogoogle = Depends(get_service),
 ) -> dict[str, str]:
@@ -23,10 +25,15 @@ async def root(
         session
     )
     spreadsheet_id, spreadsheet_url = await spreadsheets_create(
-        wrapper_service
+        wrapper_service, close_projects
     )
     await set_user_permissions(spreadsheet_id, wrapper_service)
-    await spreadsheets_update_value(
-        spreadsheet_id, close_projects, wrapper_service
-    )
-    return {"таблица с результатом доступна по ссылке": spreadsheet_url}
+    try:
+        await spreadsheets_update_value(
+            spreadsheet_id, wrapper_service, close_projects
+        )
+    except TypeError as error:
+        print(error)
+    return {"spreadsheetUrl": spreadsheet_url}
+
+
