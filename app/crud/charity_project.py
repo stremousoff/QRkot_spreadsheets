@@ -37,8 +37,8 @@ class CRUDCharityProject(CRUDBase):
                     [
                         CharityProject.name,
                         (
-                            func.strftime("%J", CharityProject.close_date)
-                            - func.strftime("%J", CharityProject.create_date)
+                            func.strftime("%J", CharityProject.close_date) -
+                            func.strftime("%J", CharityProject.create_date)
                         ).label("duration_period"),
                         CharityProject.description,
                     ]
