@@ -1,37 +1,24 @@
 from datetime import datetime
-
 from aiogoogle import Aiogoogle
 from app.core.config import settings
+from app.core.constans import FORMAT_SPREADSHEET_TIME, SPREADSHEET_TEMPLATE
 
 
-FORMAT = "%Y/%m/%d %H:%M:%S"
-
-
-def get_spreadsheet_header(_datetime: str) -> list:
-    return [
-        ["Отчёт от", _datetime],
-        ["Топ проектов по скорости закрытия"],
-        ["Название проекта", "Время сбора", "Описание"],
-    ]
-
-
-def get_spreadsheet_body(_datetime: str, rows: int, columns: int) -> dict:
-    return dict(
-        properties=dict(
-            title=f"Все закрытые сборы на {_datetime} время",
-            locale="ru_RU",
-        ),
-        sheets=[
-            dict(
-                properties=dict(
-                    sheetType="GRID",
-                    sheetId=0,
-                    title="Лист1",
-                    gridProperties=dict(rowCount=rows, columnCount=columns),
-                )
-            )
-        ],
-    )
+def get_spreadsheet_template(
+    template_type: str, _datetime: str, rows: int = None, columns: int = None
+) -> dict:
+    template = SPREADSHEET_TEMPLATE[template_type].copy()
+    if template_type == "header":
+        template[0][1] = _datetime
+        return template
+    template["properties"][
+        "title"
+    ] = f"Все закрытые сборы на {_datetime} время"
+    template["sheets"][0]["properties"]["gridProperties"]["rowCount"] = rows
+    template["sheets"][0]["properties"]["gridProperties"][
+        "columnCount"
+    ] = columns
+    return template
 
 
 async def spreadsheets_create(
@@ -39,10 +26,13 @@ async def spreadsheets_create(
     projects: list,
 ) -> tuple[str, str]:
     service = await wrapper_services.discover("sheets", "v4")
-    spreadsheet_body = get_spreadsheet_body(
-        datetime.now().strftime(FORMAT),
-        rows=len(projects) + len(get_spreadsheet_header("")),
-        columns=max(map(len, get_spreadsheet_header(""))),
+    num_rows = len(projects) + len(SPREADSHEET_TEMPLATE["header"])
+    num_columns = max(map(len, SPREADSHEET_TEMPLATE["header"]))
+    spreadsheet_body = get_spreadsheet_template(
+        "body",
+        datetime.now().strftime(FORMAT_SPREADSHEET_TIME),
+        rows=num_rows,
+        columns=num_columns,
     )
     response = await wrapper_services.as_service_account(
         service.spreadsheets.create(json=spreadsheet_body)
@@ -70,38 +60,20 @@ async def spreadsheets_update_value(
     spreadsheet_id: str, wrapper_service: Aiogoogle, projects: list
 ) -> None:
     service = await wrapper_service.discover("sheets", "v4")
-    print(projects)
     table_values = [
-        *get_spreadsheet_header(datetime.now().strftime(FORMAT)),
+        *get_spreadsheet_template(
+            "header", datetime.now().strftime(FORMAT_SPREADSHEET_TIME)
+        ),
         *[
             list(map(str, [title, duration_period, description]))
             for title, duration_period, description in projects
         ],
     ]
     update_body = {"majorDimension": "ROWS", "values": table_values}
-    num_rows = len(table_values)
-    num_columns = max(map(len, table_values))
-    spreadsheet_body = get_spreadsheet_body(
-        datetime.now().strftime(FORMAT),
-        rows=num_rows,
-        columns=num_columns,
-    )
-    num_rows_spreadsheet = spreadsheet_body["sheets"][0]["properties"][
-        "gridProperties"
-    ]["rowCount"]
-    num_columns_spreadsheet = spreadsheet_body["sheets"][0]["properties"][
-        "gridProperties"
-    ]["columnCount"]
-    if (
-        num_rows > num_rows_spreadsheet or
-            num_columns > num_columns_spreadsheet
-    ):
-        raise ValueError("Таблица не влезает в заготовку")
-
     await wrapper_service.as_service_account(
         service.spreadsheets.values.update(
             spreadsheetId=spreadsheet_id,
-            range=f"R1C1:R{num_rows}C{num_columns}",
+            range=f"R1C1:R{len(table_values)}C{max(map(len, table_values))}",
             valueInputOption="USER_ENTERED",
             json=update_body,
         )

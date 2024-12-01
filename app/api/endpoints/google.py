@@ -26,10 +26,7 @@ async def make_report(
         wrapper_service, close_projects
     )
     await set_user_permissions(spreadsheet_id, wrapper_service)
-    try:
-        await spreadsheets_update_value(
-            spreadsheet_id, wrapper_service, close_projects
-        )
-    except TypeError as error:
-        print(error)
+    await spreadsheets_update_value(
+        spreadsheet_id, wrapper_service, close_projects
+    )
     return {"spreadsheetUrl": spreadsheet_url}

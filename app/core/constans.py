@@ -1,3 +1,5 @@
+from typing import Optional
+
 # Константы моделей и схем
 MAX_LENGTH_NAME = 100
 MIN_LENGTH_NAME = 1
@@ -35,3 +37,33 @@ class UserMessages:
     PASSWORD_ERROR = "Длина пароля должна быть не менее 8 символов!"
     PASSWORD_NOT_CONTAIN_EMAIL = "Пароль не должен содержать e-mail!"
     USER_SUCCESSFULLY_REGISTERED = "Пользователь {} зарегистрирован."
+
+
+# Константы Google_api:
+FORMAT_SPREADSHEET_TIME = "%Y/%m/%d %H:%M:%S"
+
+SPREADSHEET_TEMPLATE = dict(
+    header=[
+        ["Отчёт от", Optional[str]],
+        ["Топ проектов по скорости закрытия"],
+        ["Название проекта", "Время сбора", "Описание"],
+    ],
+    body=dict(
+        properties=dict(
+            title=Optional[str],
+            locale="ru_RU",
+        ),
+        sheets=[
+            dict(
+                properties=dict(
+                    sheetType="GRID",
+                    sheetId=0,
+                    title="Лист1",
+                    gridProperties=dict(
+                        rowCount=Optional[int], columnCount=Optional[int]
+                    ),
+                )
+            )
+        ],
+    ),
+)
