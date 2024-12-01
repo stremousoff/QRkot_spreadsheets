@@ -1,40 +1,60 @@
 from datetime import datetime
+
 from aiogoogle import Aiogoogle
+
 from app.core.config import settings
-from app.core.constans import FORMAT_SPREADSHEET_TIME, SPREADSHEET_TEMPLATE
+from app.core.constans import (
+    FORMAT_SPREADSHEET_TIME,
+    GOOGLE_SPREADSHEET_ROWS_LIMIT,
+    GOOGLE_SPREADSHEET_COLUMNS_LIMIT,
+    ValidationError,
+    SPREADSHEET_HEADER,
+    SPREADSHEET_BODY
+)
+from app.core.exceptions import MaxColumnsLimit, MaxRowsLimit
 
 
-def get_spreadsheet_template(
-    template_type: str, _datetime: str, rows: int = None, columns: int = None
-) -> dict:
-    template = SPREADSHEET_TEMPLATE[template_type].copy()
-    if template_type == "header":
-        template[0][1] = _datetime
-        return template
-    template["properties"][
-        "title"
-    ] = f"Все закрытые сборы на {_datetime} время"
-    template["sheets"][0]["properties"]["gridProperties"]["rowCount"] = rows
-    template["sheets"][0]["properties"]["gridProperties"][
-        "columnCount"
-    ] = columns
-    return template
+def get_spreadsheet_header(_datetime: str) -> list:
+    header = SPREADSHEET_HEADER.copy()
+    header[0][1] = _datetime
+    return header
+
+
+def get_spreadsheet_body(_datetime: str, rows: int, columns: int) -> dict:
+    body = SPREADSHEET_BODY.copy()
+    body["properties"]["title"] = f"Все закрытые сборы на {_datetime} время"
+    grid_properties = body["sheets"][0]["properties"]["gridProperties"]
+    grid_properties["rowCount"], grid_properties["columnCount"] = rows, columns
+    return body
 
 
 async def spreadsheets_create(
-    wrapper_services: Aiogoogle,
+    wrapper_service: Aiogoogle,
     projects: list,
 ) -> tuple[str, str]:
-    service = await wrapper_services.discover("sheets", "v4")
-    num_rows = len(projects) + len(SPREADSHEET_TEMPLATE["header"])
-    num_columns = max(map(len, SPREADSHEET_TEMPLATE["header"]))
-    spreadsheet_body = get_spreadsheet_template(
-        "body",
+    service = await wrapper_service.discover("sheets", "v4")
+    spreadsheet_body = get_spreadsheet_body(
         datetime.now().strftime(FORMAT_SPREADSHEET_TIME),
-        rows=num_rows,
-        columns=num_columns,
+        rows=len(projects) + len(get_spreadsheet_header("")),
+        columns=max(map(len, get_spreadsheet_header(""))),
     )
-    response = await wrapper_services.as_service_account(
+    grid_properties = spreadsheet_body["sheets"][0]["properties"][
+        "gridProperties"
+    ]
+    if grid_properties["rowCount"] > GOOGLE_SPREADSHEET_ROWS_LIMIT:
+        raise MaxRowsLimit(
+            ValidationError.EXCEEDED_ROWS_AMOUNT.format(
+                GOOGLE_SPREADSHEET_ROWS_LIMIT, grid_properties["rowCount"]
+            )
+        )
+    if grid_properties["columnCount"] > GOOGLE_SPREADSHEET_COLUMNS_LIMIT:
+        raise MaxColumnsLimit(
+            ValidationError.EXCEEDED_COLUMNS_AMOUNT.format(
+                GOOGLE_SPREADSHEET_COLUMNS_LIMIT,
+                grid_properties["columnCount"],
+            )
+        )
+    response = await wrapper_service.as_service_account(
         service.spreadsheets.create(json=spreadsheet_body)
     )
     return response["spreadsheetId"], response["spreadsheetUrl"]
@@ -61,8 +81,8 @@ async def spreadsheets_update_value(
 ) -> None:
     service = await wrapper_service.discover("sheets", "v4")
     table_values = [
-        *get_spreadsheet_template(
-            "header", datetime.now().strftime(FORMAT_SPREADSHEET_TIME)
+        *get_spreadsheet_header(
+            datetime.now().strftime(FORMAT_SPREADSHEET_TIME)
         ),
         *[
             list(map(str, [title, duration_period, description]))

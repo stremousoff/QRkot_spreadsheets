@@ -30,6 +30,10 @@ class ValidationError:
         "В проект были внесены средства, не подлежит изменению!"
     )
     NAME_REQUIRED = "Поле name обязательно для заполнения."
+    EXCEEDED_ROWS_AMOUNT = ("Превышено максимальное({}) количество строк в "
+                            "таблице! Требуется записать {}")
+    EXCEEDED_COLUMNS_AMOUNT = ("Превышено максимальное({}) количество столбцов"
+                               " в таблице! Требуется записать {}")
 
 
 # Литералы ошибок регистрации пользователя
@@ -41,29 +45,28 @@ class UserMessages:
 
 # Константы Google_api:
 FORMAT_SPREADSHEET_TIME = "%Y/%m/%d %H:%M:%S"
+GOOGLE_SPREADSHEET_ROWS_LIMIT = 1000000000
+GOOGLE_SPREADSHEET_COLUMNS_LIMIT = 18278
 
-SPREADSHEET_TEMPLATE = dict(
-    header=[
-        ["Отчёт от", Optional[str]],
-        ["Топ проектов по скорости закрытия"],
-        ["Название проекта", "Время сбора", "Описание"],
-    ],
-    body=dict(
-        properties=dict(
-            title=Optional[str],
-            locale="ru_RU",
-        ),
-        sheets=[
-            dict(
-                properties=dict(
-                    sheetType="GRID",
-                    sheetId=0,
-                    title="Лист1",
-                    gridProperties=dict(
-                        rowCount=Optional[int], columnCount=Optional[int]
-                    ),
-                )
-            )
-        ],
+
+SPREADSHEET_HEADER = [
+    ["Отчёт от", ""],
+    ["Топ проектов по скорости закрытия"],
+    ["Название проекта", "Время сбора", "Описание"],
+]
+
+SPREADSHEET_BODY = dict(
+    properties=dict(
+        locale="ru_RU",
     ),
+    sheets=[
+        dict(
+            properties=dict(
+                sheetType="GRID",
+                sheetId=0,
+                title="Лист1",
+                gridProperties=dict(),
+            )
+        )
+    ],
 )
