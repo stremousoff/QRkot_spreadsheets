@@ -34,14 +34,11 @@ class ValidationError:
         "В проект были внесены средства, не подлежит изменению!"
     )
     NAME_REQUIRED = "Поле name обязательно для заполнения."
-    EXCEEDED_ROWS_AMOUNT = (
-        f"Превышено максимальное число строк({GOOGLE_SPREADSHEET_ROWS_LIMIT}) "
-        f"в таблице -> {{}}"
-    )
-    EXCEEDED_COLUMNS_AMOUNT = (
-        f"Превышено максимальное число колонок("
-        f"{GOOGLE_SPREADSHEET_COLUMNS_LIMIT}) в таблице -> {{}}"
-    )
+    EXCEEDED_ROWS_AMOUNT = ("Превышено максимальное({}) количество строк в "
+                            "таблице! Требуется записать {}")
+    EXCEEDED_COLUMNS_AMOUNT = (f"Превышено максимальное число колонок в "
+                               f"таблице {GOOGLE_SPREADSHEET_COLUMNS_LIMIT} -> "
+                               f"{}")
 
 
 # Литералы ошибок регистрации пользователя
@@ -49,7 +46,6 @@ class UserMessages:
     PASSWORD_ERROR = "Длина пароля должна быть не менее 8 символов!"
     PASSWORD_NOT_CONTAIN_EMAIL = "Пароль не должен содержать e-mail!"
     USER_SUCCESSFULLY_REGISTERED = "Пользователь {} зарегистрирован."
-
 
 SPREADSHEET_HEADER = [
     ["Отчёт от", ""],

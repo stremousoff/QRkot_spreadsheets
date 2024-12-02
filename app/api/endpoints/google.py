@@ -31,8 +31,10 @@ async def make_report(
             wrapper_service, close_projects
         )
     except (MaxRowsLimit, MaxColumnsLimit) as error:
-        raise HTTPException(HTTPStatus.BAD_REQUEST, error)
-
+        raise HTTPException(
+            HTTPStatus.BAD_REQUEST,
+            f"Ошибка создания таблицы: {error}"
+        )
     await set_user_permissions(spreadsheet_id, wrapper_service)
     await spreadsheets_update_value(
         spreadsheet_id, wrapper_service, close_projects

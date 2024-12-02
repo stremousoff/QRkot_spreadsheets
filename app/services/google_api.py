@@ -1,3 +1,4 @@
+import copy
 from datetime import datetime
 
 from aiogoogle import Aiogoogle
@@ -15,13 +16,13 @@ from app.core.exceptions import MaxColumnsLimit, MaxRowsLimit
 
 
 def get_spreadsheet_header(_datetime: str) -> list:
-    header = SPREADSHEET_HEADER.copy()
+    header = copy.deepcopy(SPREADSHEET_HEADER)
     header[0][1] = _datetime
     return header
 
 
 def get_spreadsheet_body(_datetime: str, rows: int, columns: int) -> dict:
-    body = SPREADSHEET_BODY.copy()
+    body = copy.deepcopy(SPREADSHEET_BODY)
     body["properties"]["title"] = f"Все закрытые сборы на {_datetime} время"
     grid_properties = body["sheets"][0]["properties"]["gridProperties"]
     grid_properties["rowCount"], grid_properties["columnCount"] = rows, columns
@@ -32,28 +33,27 @@ async def spreadsheets_create(
     wrapper_service: Aiogoogle,
     projects: list,
 ) -> tuple[str, str]:
+    table_values = [
+        *get_spreadsheet_header(
+            datetime.now().strftime(FORMAT_SPREADSHEET_TIME)),
+        *[list(map(str, [title, duration_period, description])) for
+          title, duration_period, description in projects],
+    ]
+    rows, columns = len(table_values), max(map(len, table_values))
+    if rows > GOOGLE_SPREADSHEET_ROWS_LIMIT:
+        raise MaxRowsLimit(
+            ValidationError.EXCEEDED_ROWS_AMOUNT.format(rows)
+        )
+    if columns > GOOGLE_SPREADSHEET_COLUMNS_LIMIT:
+        raise MaxColumnsLimit(
+            ValidationError.EXCEEDED_COLUMNS_AMOUNT.format(columns)
+        )
     service = await wrapper_service.discover("sheets", "v4")
     spreadsheet_body = get_spreadsheet_body(
         datetime.now().strftime(FORMAT_SPREADSHEET_TIME),
-        rows=len(projects) + len(get_spreadsheet_header("")),
-        columns=max(map(len, get_spreadsheet_header(""))),
+        rows=rows,
+        columns=columns
     )
-    grid_properties = spreadsheet_body["sheets"][0]["properties"][
-        "gridProperties"
-    ]
-    if grid_properties["rowCount"] > GOOGLE_SPREADSHEET_ROWS_LIMIT:
-        raise MaxRowsLimit(
-            ValidationError.EXCEEDED_ROWS_AMOUNT.format(
-                GOOGLE_SPREADSHEET_ROWS_LIMIT, grid_properties["rowCount"]
-            )
-        )
-    if grid_properties["columnCount"] > GOOGLE_SPREADSHEET_COLUMNS_LIMIT:
-        raise MaxColumnsLimit(
-            ValidationError.EXCEEDED_COLUMNS_AMOUNT.format(
-                GOOGLE_SPREADSHEET_COLUMNS_LIMIT,
-                grid_properties["columnCount"],
-            )
-        )
     response = await wrapper_service.as_service_account(
         service.spreadsheets.create(json=spreadsheet_body)
     )
