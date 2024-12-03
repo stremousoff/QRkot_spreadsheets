@@ -16,8 +16,7 @@ class ConfigConstants:
 
 # Константы Google_api:
 FORMAT_SPREADSHEET_TIME = "%Y/%m/%d %H:%M:%S"
-GOOGLE_SPREADSHEET_ROWS_LIMIT = 40_000
-GOOGLE_SPREADSHEET_COLUMNS_LIMIT = 18_278
+GOOGLE_SPREADSHEET_CELL_LIMIT = 10_000_000
 
 
 # Литералы ошибок валидации
@@ -34,14 +33,15 @@ class ValidationError:
         "В проект были внесены средства, не подлежит изменению!"
     )
     NAME_REQUIRED = "Поле name обязательно для заполнения."
-    EXCEEDED_ROWS_AMOUNT = (
-        f"Превышено максимальное число строк({GOOGLE_SPREADSHEET_ROWS_LIMIT}) "
-        f"в таблице -> {{}}"
+    EXCEEDED_CELL_AMOUNT = (
+        f"Превышено максимальное число ячеек {{}} * {{}} > "
+        f"{GOOGLE_SPREADSHEET_CELL_LIMIT}!"
     )
-    EXCEEDED_COLUMNS_AMOUNT = (
-        f"Превышено максимальное число колонок("
-        f"{GOOGLE_SPREADSHEET_COLUMNS_LIMIT}) в таблице -> {{}}"
-    )
+
+
+# Литералы ошибок Google_api
+class GoogleApiError:
+    SPREADSHEET_CREATE_ERROR = "Произошла ошибка при создании таблицы: {}"
 
 
 # Литералы ошибок регистрации пользователя
@@ -51,12 +51,14 @@ class UserMessages:
     USER_SUCCESSFULLY_REGISTERED = "Пользователь {} зарегистрирован."
 
 
+# Заготовка для хедера таблицы
 SPREADSHEET_HEADER = [
     ["Отчёт от", ""],
     ["Топ проектов по скорости закрытия"],
     ["Название проекта", "Время сбора", "Описание"],
 ]
 
+# Заготовка для тела таблицы
 SPREADSHEET_BODY = dict(
     properties=dict(
         title="",

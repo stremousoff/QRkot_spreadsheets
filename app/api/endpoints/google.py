@@ -1,12 +1,12 @@
 from http import HTTPStatus
-from http.client import HTTPException
 
 from aiogoogle import Aiogoogle
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_async_session
-from app.core.exceptions import MaxRowsLimit, MaxColumnsLimit
+from app.core.constans import GoogleApiError
+from app.core.exceptions import MaxCellLimit
 from app.core.google_client import get_service
 from app.crud.charity_project import charity_crud
 from app.services.google_api import (
@@ -30,10 +30,10 @@ async def make_report(
         spreadsheet_id, spreadsheet_url = await spreadsheets_create(
             wrapper_service, close_projects
         )
-    except (MaxRowsLimit, MaxColumnsLimit) as error:
+    except MaxCellLimit as error:
         raise HTTPException(
-            HTTPStatus.BAD_REQUEST,
-            f"Ошибка создания таблицы: {error}"
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail=GoogleApiError.SPREADSHEET_CREATE_ERROR.format(error),
         )
     await set_user_permissions(spreadsheet_id, wrapper_service)
     await spreadsheets_update_value(
