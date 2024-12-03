@@ -86,7 +86,7 @@ async def spreadsheets_update_value(
     service = await wrapper_service.discover("sheets", "v4")
     table_data = make_spreadsheet_data(projects)
     rows, columns = len(table_data), max(map(len, table_data))
-    update_body = {"majorDimension": "ROWS", "values": table_date}
+    update_body = {"majorDimension": "ROWS", "values": table_data}
     await wrapper_service.as_service_account(
         service.spreadsheets.values.update(
             spreadsheetId=spreadsheet_id,
