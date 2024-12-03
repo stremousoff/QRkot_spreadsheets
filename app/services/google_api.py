@@ -28,7 +28,7 @@ def get_spreadsheet_body(_datetime: str, rows: int, columns: int) -> dict:
     return body
 
 
-def make_spreadsheet_date(projects: list) -> list:
+def make_spreadsheet_data(projects: list) -> list:
     return [
         *get_spreadsheet_header(
             datetime.now().strftime(FORMAT_SPREADSHEET_TIME)
@@ -44,8 +44,8 @@ async def spreadsheets_create(
     wrapper_service: Aiogoogle,
     projects: list,
 ) -> tuple[str, str]:
-    table_date = make_spreadsheet_date(projects)
-    rows, columns = len(table_date), max(map(len, table_date))
+    table_data = make_spreadsheet_data(projects)
+    rows, columns = len(table_data), max(map(len, table_data))
     if rows * columns > GOOGLE_SPREADSHEET_CELL_LIMIT:
         raise MaxCellLimit(
             ValidationError.EXCEEDED_CELL_AMOUNT.format(
@@ -84,8 +84,8 @@ async def spreadsheets_update_value(
     spreadsheet_id: str, wrapper_service: Aiogoogle, projects: list
 ) -> None:
     service = await wrapper_service.discover("sheets", "v4")
-    table_date = make_spreadsheet_date(projects)
-    rows, columns = len(table_date), max(map(len, table_date))
+    table_data = make_spreadsheet_data(projects)
+    rows, columns = len(table_data), max(map(len, table_data))
     update_body = {"majorDimension": "ROWS", "values": table_date}
     await wrapper_service.as_service_account(
         service.spreadsheets.values.update(
