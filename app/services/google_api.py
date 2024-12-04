@@ -7,11 +7,13 @@ from app.core.config import settings
 from app.core.constans import (
     FORMAT_SPREADSHEET_TIME,
     GOOGLE_SPREADSHEET_CELL_LIMIT,
+    GOOGLE_SPREADSHEET_COLUMNS_LIMIT,
+    GOOGLE_SPREADSHEET_ROWS_LIMIT,
+    SPREADSHEET_BODY,
     ValidationError,
     SPREADSHEET_HEADER,
-    SPREADSHEET_BODY
 )
-from app.core.exceptions import MaxCellLimit
+from app.core.exceptions import MaxCellLimit, MaxRowLimit
 
 
 def get_spreadsheet_header(_datetime: str) -> list:
@@ -43,9 +45,21 @@ def make_spreadsheet_data(projects: list) -> list:
 async def spreadsheets_create(
     wrapper_service: Aiogoogle,
     projects: list,
-) -> tuple[str, str]:
+) -> tuple[str, str, list, int, int]:
     table_data = make_spreadsheet_data(projects)
     rows, columns = len(table_data), max(map(len, table_data))
+    if rows > GOOGLE_SPREADSHEET_ROWS_LIMIT:
+        raise MaxRowLimit(
+            ValidationError.EXCEEDED_ROW_AMOUNT.format(
+                GOOGLE_SPREADSHEET_ROWS_LIMIT
+            )
+        )
+    if columns > GOOGLE_SPREADSHEET_COLUMNS_LIMIT:
+        raise MaxCellLimit(
+            ValidationError.EXCEEDED_COLUMN_AMOUNT.format(
+                GOOGLE_SPREADSHEET_COLUMNS_LIMIT
+            )
+        )
     if rows * columns > GOOGLE_SPREADSHEET_CELL_LIMIT:
         raise MaxCellLimit(
             ValidationError.EXCEEDED_CELL_AMOUNT.format(
@@ -61,7 +75,8 @@ async def spreadsheets_create(
     response = await wrapper_service.as_service_account(
         service.spreadsheets.create(json=spreadsheet_body)
     )
-    return response["spreadsheetId"], response["spreadsheetUrl"]
+    return (response["spreadsheetId"], response["spreadsheetUrl"],
+            table_data, rows, columns)
 
 
 async def set_user_permissions(
@@ -81,11 +96,13 @@ async def set_user_permissions(
 
 
 async def spreadsheets_update_value(
-    spreadsheet_id: str, wrapper_service: Aiogoogle, projects: list
+    spreadsheet_id: str,
+        wrapper_service: Aiogoogle,
+        table_data: list,
+        rows: int,
+        columns: int
 ) -> None:
     service = await wrapper_service.discover("sheets", "v4")
-    table_data = make_spreadsheet_data(projects)
-    rows, columns = len(table_data), max(map(len, table_data))
     update_body = {"majorDimension": "ROWS", "values": table_data}
     await wrapper_service.as_service_account(
         service.spreadsheets.values.update(

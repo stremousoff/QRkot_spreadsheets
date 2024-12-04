@@ -18,7 +18,7 @@ class ConfigConstants:
 FORMAT_SPREADSHEET_TIME = "%Y/%m/%d %H:%M:%S"
 GOOGLE_SPREADSHEET_CELL_LIMIT = 10_000_000
 GOOGLE_SPREADSHEET_COLUMNS_LIMIT = 18_278
-GOOGLE_SPREADSHEET_ROWS_LIMIT = 200_000
+GOOGLE_SPREADSHEET_ROWS_LIMIT = 40_000
 
 
 # Литералы ошибок валидации
@@ -38,14 +38,6 @@ class ValidationError:
     EXCEEDED_CELL_AMOUNT = (
         f"Превышено максимальное число ячеек {{}} * {{}} > "
         f"{GOOGLE_SPREADSHEET_CELL_LIMIT}!"
-    )
-    EXCEEDED_COLUMN_AMOUNT = (
-        f"Превышено максимальное число колонок {{}} > "
-        f"{GOOGLE_SPREADSHEET_COLUMNS_LIMIT}!"
-    )
-    EXCEEDED_ROW_AMOUNT = (
-        f"Превышено максимальное число строк {{}} > "
-        f"{GOOGLE_SPREADSHEET_ROWS_LIMIT}!"
     )
 
 

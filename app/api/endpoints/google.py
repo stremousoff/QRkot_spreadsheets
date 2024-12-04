@@ -27,8 +27,8 @@ async def make_report(
         session
     )
     try:
-        spreadsheet_id, spreadsheet_url = await spreadsheets_create(
-            wrapper_service, close_projects
+        spreadsheet_id, spreadsheet_url, table_data, rows, columns = (
+            await spreadsheets_create(wrapper_service, close_projects)
         )
     except MaxCellLimit as error:
         raise HTTPException(
@@ -37,6 +37,6 @@ async def make_report(
         )
     await set_user_permissions(spreadsheet_id, wrapper_service)
     await spreadsheets_update_value(
-        spreadsheet_id, wrapper_service, close_projects
+        spreadsheet_id, wrapper_service, table_data, rows, columns
     )
     return {"spreadsheetUrl": spreadsheet_url}
