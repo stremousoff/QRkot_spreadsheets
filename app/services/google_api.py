@@ -49,34 +49,31 @@ async def spreadsheets_create(
     table_data = make_spreadsheet_data(projects)
     rows, columns = len(table_data), max(map(len, table_data))
     if rows > GOOGLE_SPREADSHEET_ROWS_LIMIT:
-        raise MaxRowLimit(
-            ValidationError.EXCEEDED_ROW_AMOUNT.format(
-                GOOGLE_SPREADSHEET_ROWS_LIMIT
-            )
-        )
+        raise MaxRowLimit(ValidationError.EXCEEDED_ROW_AMOUNT.format(rows))
     if columns > GOOGLE_SPREADSHEET_COLUMNS_LIMIT:
         raise MaxCellLimit(
-            ValidationError.EXCEEDED_COLUMN_AMOUNT.format(
-                GOOGLE_SPREADSHEET_COLUMNS_LIMIT
-            )
+            ValidationError.EXCEEDED_COLUMN_AMOUNT.format(columns)
         )
     if rows * columns > GOOGLE_SPREADSHEET_CELL_LIMIT:
         raise MaxCellLimit(
-            ValidationError.EXCEEDED_CELL_AMOUNT.format(
-                GOOGLE_SPREADSHEET_CELL_LIMIT
-            )
+            ValidationError.EXCEEDED_CELL_AMOUNT.format(rows, columns)
         )
     service = await wrapper_service.discover("sheets", "v4")
     spreadsheet_body = get_spreadsheet_body(
         datetime.now().strftime(FORMAT_SPREADSHEET_TIME),
         rows=rows,
-        columns=columns
+        columns=columns,
     )
     response = await wrapper_service.as_service_account(
         service.spreadsheets.create(json=spreadsheet_body)
     )
-    return (response["spreadsheetId"], response["spreadsheetUrl"],
-            table_data, rows, columns)
+    return (
+        response["spreadsheetId"],
+        response["spreadsheetUrl"],
+        table_data,
+        rows,
+        columns,
+    )
 
 
 async def set_user_permissions(
@@ -97,10 +94,10 @@ async def set_user_permissions(
 
 async def spreadsheets_update_value(
     spreadsheet_id: str,
-        wrapper_service: Aiogoogle,
-        table_data: list,
-        rows: int,
-        columns: int
+    wrapper_service: Aiogoogle,
+    table_data: list,
+    rows: int,
+    columns: int,
 ) -> None:
     service = await wrapper_service.discover("sheets", "v4")
     update_body = {"majorDimension": "ROWS", "values": table_data}
